@@ -8,4 +8,4 @@ const Precio = db.define('precios', {
     }
 });
 
-export default Categoria;
+export default Precio;
