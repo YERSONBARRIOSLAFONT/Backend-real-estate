@@ -58,9 +58,9 @@ const autenticar = async (req, res) => {
     }
 
     //Autenticar al usuario
-    const token = generarJWT({ usuario: usuario.id, nombre: usuario.nombre })
+    const token = generarJWT({ id: usuario.id, nombre: usuario.nombre });
 
-    console.log(token);
+    console.log('Token:', token);
 
     //Almacenar en un cookie
 
@@ -150,7 +150,6 @@ const confirmar = async (req, res) => {
 
     //Verificar validez del token
     const usuario = await Usuario.findOne({where: {token}})
-    console.log(usuario);
 
     if(!usuario) {
         return res.render('auth/confirmar-cuenta', {
