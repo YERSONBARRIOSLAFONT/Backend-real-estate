@@ -20,7 +20,7 @@ app.use(csrf({cookie: true}))
 //Conexion a la base de datos
 try {
     await db.authenticate();
-    db.sync()
+    await db.sync();
     console.log('Conexion correcta a la base de datos');
 } catch (error) {
     console.log(error);

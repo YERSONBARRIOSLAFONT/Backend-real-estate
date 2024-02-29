@@ -39,4 +39,3 @@ Usuario.prototype.verificarPassword = function(password) {
 }
 
 export default Usuario
-
