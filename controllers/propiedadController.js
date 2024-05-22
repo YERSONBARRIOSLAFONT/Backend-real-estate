@@ -5,16 +5,32 @@ import { log } from 'node:console'
 
 const admin = async (req, res) => {
 
-    const { id } = req.usuario
+    //Leer QueryString
+    const { pagina: paginaActual } = req.query
+
+    const expresion = /^[0-9]$/
+
+    if(!expresion.test(paginaActual)) {
+        return res.redirect('/mis-propiedades?pagina=1')
+    }
+
+    try {
+        const { id } = req.usuario
+
+        // Limites y Offset para el paginador
+        const limit = 10;
+        const offset = ((paginaActual * limit) - limit)
 
     const propiedades = await Propiedad.findAll({
+        limit,
+        offset,
         where: {
             usuarioId: id
         },
         include: [
             { model: Categoria, as: 'categoria' },
             { model: Precio, as: 'precio' },
-        ]
+        ],
     })
 
     res.render('propiedades/admin', {
@@ -22,7 +38,12 @@ const admin = async (req, res) => {
         propiedades,
         csrfToken: req.csrfToken(),
     })
-}
+
+    } catch (error) {
+        console.log(error);
+    }
+
+}   
 
 //Formulafrio para crear una nueva propiedad
 const crear = async (req, res) => {
@@ -277,8 +298,24 @@ const eliminar = async (req, res) => {
 
 //Muestra una propiedad
 const mostrarPropiedad = async (req, res) => {
+    const {id} = req.params
+
+    //Compropbar que la propiedad exista
+    const propiedad = await Propiedad.findByPk(id, {
+        include : [
+            {model: Precio, as: 'precio'},
+            {model: Categoria, as: 'categoria'},
+
+        ]
+    })
+
+    if(!propiedad) {
+        return res.redirect('/404')
+    }
+
     res.render('propiedades/mostrar', {
-        
+        propiedad,
+        pagina: propiedad.titulo
     })
 }
 
