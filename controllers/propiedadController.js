@@ -18,25 +18,38 @@ const admin = async (req, res) => {
         const { id } = req.usuario
 
         // Limites y Offset para el paginador
-        const limit = 10;
+        const limit = 5;
         const offset = ((paginaActual * limit) - limit)
 
-    const propiedades = await Propiedad.findAll({
-        limit,
-        offset,
-        where: {
-            usuarioId: id
-        },
-        include: [
-            { model: Categoria, as: 'categoria' },
-            { model: Precio, as: 'precio' },
-        ],
-    })
+    const [propiedades, total] = await Promise.all([
+        Propiedad.findAll({
+            limit,
+            offset,
+            where: {
+                usuarioId: id
+            },
+            include: [
+                { model: Categoria, as: 'categoria' },
+                { model: Precio, as: 'precio' },
+            ],
+        }),
+        Propiedad.count({
+            where: {
+                usuarioId : id
+            }
+        })
+    ])
+
 
     res.render('propiedades/admin', {
         pagina: 'Mis Propiedades',
         propiedades,
         csrfToken: req.csrfToken(),
+        paginas: Math.ceil(total / limit),
+        paginaActual: Number(paginaActual),
+        total,
+        offset,
+        limit
     })
 
     } catch (error) {
