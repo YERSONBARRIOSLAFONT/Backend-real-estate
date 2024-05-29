@@ -594,14 +594,14 @@ video {
 .min-h-screen {
   min-height: 100vh;
 }
+.w-24 {
+  width: 6rem;
+}
 .w-6 {
   width: 1.5rem;
 }
 .w-full {
   width: 100%;
-}
-.w-24 {
-  width: 6rem;
 }
 .max-w-4xl {
   max-width: 56rem;
@@ -801,6 +801,9 @@ video {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
+}
+.pt-10 {
+  padding-top: 2.5rem;
 }
 .text-center {
   text-align: center;

@@ -48,6 +48,7 @@
     const mostrarPropiedades = propiedades => {
 
         //Limpiar los markers previos
+        markers.clearLayers()
         
         propiedades.forEach(propiedad => {
             //Agregar los pines
