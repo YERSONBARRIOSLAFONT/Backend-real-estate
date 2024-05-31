@@ -1,7 +1,7 @@
 import { unlink } from 'node:fs/promises'
 import { validationResult } from 'express-validator'
-import { Precio, Categoria, Propiedad } from '../models/index.js'
-import {esVendedor} from '../helpers/index.js'
+import { Precio, Categoria, Propiedad, Mensaje, Usuario } from '../models/index.js'
+import { esVendedor, formatearFecha } from '../helpers/index.js'
 
 const admin = async (req, res) => {
 
@@ -10,7 +10,7 @@ const admin = async (req, res) => {
 
     const expresion = /^[0-9]$/
 
-    if(!expresion.test(paginaActual)) {
+    if (!expresion.test(paginaActual)) {
         return res.redirect('/mis-propiedades?pagina=1')
     }
 
@@ -21,42 +21,43 @@ const admin = async (req, res) => {
         const limit = 5;
         const offset = ((paginaActual * limit) - limit)
 
-    const [propiedades, total] = await Promise.all([
-        Propiedad.findAll({
-            limit,
+        const [propiedades, total] = await Promise.all([
+            Propiedad.findAll({
+                limit,
+                offset,
+                where: {
+                    usuarioId: id
+                },
+                include: [
+                    { model: Categoria, as: 'categoria' },
+                    { model: Precio, as: 'precio' },
+                    { model: Mensaje, as: 'mensajes'}
+                ],
+            }),
+            Propiedad.count({
+                where: {
+                    usuarioId: id
+                }
+            })
+        ])
+
+
+        res.render('propiedades/admin', {
+            pagina: 'Mis Propiedades',
+            propiedades,
+            csrfToken: req.csrfToken(),
+            paginas: Math.ceil(total / limit),
+            paginaActual: Number(paginaActual),
+            total,
             offset,
-            where: {
-                usuarioId: id
-            },
-            include: [
-                { model: Categoria, as: 'categoria' },
-                { model: Precio, as: 'precio' },
-            ],
-        }),
-        Propiedad.count({
-            where: {
-                usuarioId : id
-            }
+            limit
         })
-    ])
-
-
-    res.render('propiedades/admin', {
-        pagina: 'Mis Propiedades',
-        propiedades,
-        csrfToken: req.csrfToken(),
-        paginas: Math.ceil(total / limit),
-        paginaActual: Number(paginaActual),
-        total,
-        offset,
-        limit
-    })
 
     } catch (error) {
         console.log(error);
     }
 
-}   
+}
 
 //Formulafrio para crear una nueva propiedad
 const crear = async (req, res) => {
@@ -286,7 +287,7 @@ const guardarCambios = async (req, res) => {
 }
 
 const eliminar = async (req, res) => {
-    
+
     const { id } = req.params
     //Validar que la propiedad exista
     const propiedad = await Propiedad.findByPk(id)
@@ -311,22 +312,22 @@ const eliminar = async (req, res) => {
 
 //Muestra una propiedad
 const mostrarPropiedad = async (req, res) => {
-    const {id} = req.params
+    const { id } = req.params
 
     //Compropbar que la propiedad exista
     const propiedad = await Propiedad.findByPk(id, {
-        include : [
-            {model: Precio, as: 'precio'},
-            {model: Categoria, as: 'categoria'},
+        include: [
+            { model: Precio, as: 'precio' },
+            { model: Categoria, as: 'categoria' },
 
         ]
     })
 
-    if(!propiedad) {
+    if (!propiedad) {
         return res.redirect('/404')
     }
 
-        return res.render('propiedades/mostrar', {
+    return res.render('propiedades/mostrar', {
         propiedad,
         pagina: propiedad.titulo,
         csrfToken: req.csrfToken(),
@@ -336,7 +337,81 @@ const mostrarPropiedad = async (req, res) => {
 }
 
 const enviarMensaje = async (req, res) => {
+    const { id } = req.params
 
+    //Compropbar que la propiedad exista
+    const propiedad = await Propiedad.findByPk(id, {
+        include: [
+            { model: Precio, as: 'precio' },
+            { model: Categoria, as: 'categoria' },
+
+        ]
+    })
+
+    if (!propiedad) {
+        return res.redirect('/404')
+    }
+
+    // Renderizar los errores
+    //Validacion
+    let resultado = validationResult(req)
+
+    if (!resultado.isEmpty()) {
+
+        return res.render('propiedades/mostrar', {
+            propiedad,
+            pagina: propiedad.titulo,
+            csrfToken: req.csrfToken(),
+            usuario: req.usuario,
+            esVendedor: esVendedor(req.usuario?.id, propiedad.usuarioId),
+            errores: resultado.array()
+        })
+    }
+
+    const { mensaje } = req.body
+    const { id: propiedadId } = req.params
+    const { id: usuarioId } = req.usuario
+
+    // Almacenar el mensaje
+    await Mensaje.create({
+        mensaje,
+        propiedadId,
+        usuarioId
+    })
+
+    res.redirect('/')
+
+}
+
+// Leer mensajes recividos
+const verMensajes = async (req, res) => {
+
+    const { id } = req.params
+    //Validar que la propiedad exista
+    const propiedad = await Propiedad.findByPk(id, {
+        include: [
+            { model: Mensaje, as: 'mensajes',
+                include: [
+                    { model: Usuario.scope('eliminarPassword'), as: 'usuario'}
+                ]
+            },
+        ],
+    })
+
+    if (!propiedad) {
+        return res.redirect('/mis-propiedades')
+    }
+
+    //Revisar que quien visita la url es quien creo la pripiedad
+    if (propiedad.usuarioId.toString() !== req.usuario.id.toString()) {
+        return res.redirect('/mis-propiedades')
+    }
+
+    res.render('propiedades/mensajes', {
+        pagina: 'Mensajes',
+        mensajes: propiedad.mensajes,
+        formatearFecha
+    })
 }
 
 export {
@@ -349,5 +424,6 @@ export {
     guardarCambios,
     eliminar,
     mostrarPropiedad,
-    enviarMensaje
+    enviarMensaje,
+    verMensajes
 }
